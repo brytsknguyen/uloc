@@ -1,6 +1,6 @@
 #include "ros/ros.h"
 #include "nlink_parser/LinktrackNodeframe3.h"
-#include <mcduwb/X.h>
+#include <uwbreloc/X.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/sync_policies/approximate_time.h>
 #include <message_filters/synchronizer.h>
@@ -47,7 +47,7 @@ private:
     // Flag to indicate if processing should continue
     bool processing_active_;
     
-    // ROS Publisher to publish mcduwb::X message
+    // ROS Publisher to publish uwbreloc::X message
     ros::Publisher pub_;
 
 public:
@@ -75,8 +75,8 @@ public:
     {
         sync_.registerCallback(boost::bind(&SyncUWB::syncCallback, this, _1, _2));
 
-        // Initialize publisher for mcduwb::X message
-        pub_ = nh_ptr->advertise<mcduwb::X>("X_topic", 10);
+        // Initialize publisher for uwbreloc::X message
+        pub_ = nh_ptr->advertise<uwbreloc::X>("X_topic", 10);
 
         // Start the processing thread
         processing_thread_ = std::thread(&SyncUWB::ProcessBuffer, this);
@@ -178,8 +178,8 @@ public:
                         {
                             ROS_INFO("Collected 400 distances. Publishing message.");
 
-                            // Create the message of type mcduwb::X
-                            mcduwb::X msg;
+                            // Create the message of type uwbreloc::X
+                            uwbreloc::X msg;
 
                             // Fill in the message data
                             msg.header.stamp = first_timestamp;  // Set the timestamp

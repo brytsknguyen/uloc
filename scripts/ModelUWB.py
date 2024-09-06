@@ -5,7 +5,7 @@ import numpy as np
 import math
 import rospy
 from nlink_parser.msg import LinktrackNodeframe3  # Message type for UWB data
-from mcduwb.msg import X
+from uwbreloc.msg import X
 
 from sklearn.preprocessing import MinMaxScaler  # For scaling input data
 import pickle  # For saving/loading models and data
@@ -43,9 +43,9 @@ lr = 0.001
 weight_decay = 0.9
 decay_rate = 0.5
 decay_step = 20
-model_path = '/home/dat/slict_ws/src/mcduwb/model/model_weights.pth'
-all_path = "/home/dat/ai_ws/catkin_ws/src/mcduwb/data/MCDUWB_nodelay/all"
-train_path = "/home/dat/ai_ws/catkin_ws/src/mcduwb/data/MCDUWB_nodelay/train"
+model_path = '/home/dat/slict_ws/src/uwbreloc/model/model_weights.pth'
+all_path = "/home/dat/slict_ws/src/uwbreloc/data/MCDUWB_nodelay/all"
+train_path = "/home/dat/slict_ws/src/uwbreloc/data/MCDUWB_nodelay/train"
 
 
 # Function to initialize the model and scalers
