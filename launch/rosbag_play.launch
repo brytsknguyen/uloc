@@ -1,0 +1,33 @@
+<launch>
+    <!-- Publish clock argument -->
+    <arg name="publish_clock" default="--clock"/>
+
+    <!-- File path to your rosbag file -->
+    <arg name="data_path" default="/home/dat/Downloads"/>
+    <arg name="bag_file" default="$(arg data_path)/ntu_night_08/*.bag"/>
+
+    <!-- Offset time for bag file -->
+    <arg name="start_time" value="0"/>
+    
+    <!-- Use simulation time parameter -->
+    <param name="/use_sim_time" value="false" />
+
+    <!-- Wait time before starting the rosbag player -->
+    <arg name="wait_time" value="0" />
+
+    <!-- Node to play back the rosbag -->
+    <node required="false" pkg="rosbag" type="play" name="rosbag_player"
+          args="$(arg publish_clock) $(arg bag_file) -r 1.0 -s $(arg start_time)"
+          launch-prefix="bash -c 'sleep $(arg wait_time); $0 $@' "/>
+
+    <!-- Launch the ModelUWB node -->
+    <node name="ModelUWB" pkg="mcduwb" type="ModelUWB.py" output="screen">
+        <param name="use_sim_time" value="false"/>
+    </node>
+
+    <!-- Launch the SyncUWB node -->
+    <node name="SyncUWB" pkg="mcduwb" type="SyncUWB">
+        <param name="use_sim_time" value="false"/>
+    </node>
+</launch>
+
