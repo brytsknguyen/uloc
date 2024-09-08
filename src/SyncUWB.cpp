@@ -21,42 +21,30 @@ bool compareByID(const nlink_parser::LinktrackNode2& node1, const nlink_parser::
 class SyncUWB
 {
 private:
-    // ROS NodeHandle pointer for managing the ROS node
     ros::NodeHandlePtr nh_ptr;
 
-    // Message filter subscribers
     message_filters::Subscriber<nlink_parser::LinktrackNodeframe3> sub0_;
     message_filters::Subscriber<nlink_parser::LinktrackNodeframe3> sub1_;
 
-    // Synchronizer for Approximate Time
     typedef message_filters::sync_policies::ApproximateTime<nlink_parser::LinktrackNodeframe3, nlink_parser::LinktrackNodeframe3> SyncPolicy;
     message_filters::Synchronizer<SyncPolicy> sync_;
 
-    // Buffer for storing synchronized messages
     std::deque<std::pair<nlink_parser::LinktrackNodeframe3::ConstPtr, nlink_parser::LinktrackNodeframe3::ConstPtr>> sync_buffer_;
-
-    // Mutex for safe access to shared resources
     std::mutex buffer_mutex_;
-
-    // Condition variable to notify the processing thread
     std::condition_variable data_ready_;
-
-    // Thread for processing buffer
     std::thread processing_thread_;
-
-    // Flag to indicate if processing should continue
     bool processing_active_;
-    
-    // ROS Publisher to publish uwbreloc::X message
+
     ros::Publisher pub_;
 
     int seqlen = 20;
+    ros::Timer empty_buffer_timer_;  // Timer to check if buffer is empty
+    ros::Time last_data_time_;       // Tracks the last time data was received
+    float  timeout = 20.0;
 
 public:
-    // Destructor
     ~SyncUWB()
     {
-        // Stop the processing thread
         {
             std::lock_guard<std::mutex> lock(buffer_mutex_);
             processing_active_ = false;
@@ -68,7 +56,6 @@ public:
         }
     }
 
-    // Constructor
     SyncUWB(ros::NodeHandlePtr &nh_ptr_) : nh_ptr(nh_ptr_), 
                                            sub0_(*nh_ptr_, "/ltp_tag0/nlnf3", 1), 
                                            sub1_(*nh_ptr_, "/ltp_tag1/nlnf3", 1), 
@@ -77,139 +64,115 @@ public:
     {
         sync_.registerCallback(boost::bind(&SyncUWB::syncCallback, this, _1, _2));
 
-        // Initialize publisher for uwbreloc::X message
         pub_ = nh_ptr->advertise<uwbreloc::X>("X_topic", 10);
 
-        // Start the processing thread
         processing_thread_ = std::thread(&SyncUWB::ProcessBuffer, this);
+
+        // Initialize the timer to check if the buffer is empty every second
+        empty_buffer_timer_ = nh_ptr->createTimer(ros::Duration(1.0), &SyncUWB::checkEmptyBuffer, this);
+
+        last_data_time_ = ros::Time::now();  // Initialize the last data time
     }
 
-    // Callback function that handles synchronized messages from both tags
     void syncCallback(const nlink_parser::LinktrackNodeframe3::ConstPtr& msg0, const nlink_parser::LinktrackNodeframe3::ConstPtr& msg1)
     {
-        // Check if both messages have data in their nodes
         if (msg0->nodes.empty() || msg1->nodes.empty())
         {
-            return; // Do not add to the buffer if either message has no nodes
+            return;
         }
 
         {
-            // Lock mutex to safely add synchronized messages to the buffer
             std::lock_guard<std::mutex> lock(buffer_mutex_);
-
-            // Push synchronized messages into the buffer as a pair
             sync_buffer_.emplace_back(msg0, msg1);
         }
 
-        // Notify the processing thread that new data is available
+        last_data_time_ = ros::Time::now();  // Update the last data time
         data_ready_.notify_one();
-        // ROS_INFO("Synchronized Data Added to Buffer. Buffer size: %ld", sync_buffer_.size());
     }
 
-    // Process messages in the buffer without removing them
     void ProcessBuffer()
     {   
-        std::vector<float> concatenated;  // Create a vector to store seqlen * 20 distances
-        concatenated.reserve(seqlen * 20);  // Reserve space for seqlen * 20 elements
+        std::vector<float> concatenated;
+        concatenated.reserve(seqlen * 20);
 
         while (processing_active_)
         {
             std::unique_lock<std::mutex> lock(buffer_mutex_);
-            // Wait until we have at least seqlen pairs in the buffer or stop processing
             data_ready_.wait(lock, [this]{ return sync_buffer_.size() >= seqlen || !processing_active_; });
 
             if (!processing_active_) break;
 
-            // Check if we have enough data
             if (sync_buffer_.size() >= seqlen)
             {
-                // Get the timestamp of the first and the twentieth message in the buffer
                 auto first_timestamp = sync_buffer_.front().first->header.stamp;
                 auto last_timestamp = sync_buffer_[(seqlen - 1)].first->header.stamp;
 
-                // Calculate the time difference between the first and twentieth message
                 ros::Duration time_span = last_timestamp - first_timestamp;
 
-                // Process the data only if the time span is less than or equal to seqlen * 0.05 * 2 seconds
                 if (time_span.toSec() <= (seqlen * 0.05 * 2))
                 {
-                    // ROS_INFO("Processing the sequent synchronized pairs from the buffer with a time span of %f seconds.", time_span.toSec());
-
                     for (size_t i = 0; i < seqlen; ++i)
                     {
-                        auto sync_pair = sync_buffer_.front(); // Get the oldest pair
+                        auto sync_pair = sync_buffer_.front();
 
-                        // Create distance vectors for both Tag 0 and Tag 1
-                        std::vector<float> distances0(10, 0.0);  // 10 nodes, all initialized to 0
-                        std::vector<float> distances1(10, 0.0);  // 10 nodes, all initialized to 0
+                        std::vector<float> distances0(10, 0.0);
+                        std::vector<float> distances1(10, 0.0);
 
-                        // Get nodes from the current synchronized messages
                         std::vector<nlink_parser::LinktrackNode2> nodes0 = sync_pair.first->nodes;
                         std::vector<nlink_parser::LinktrackNode2> nodes1 = sync_pair.second->nodes;
 
-                        // Populate distances0 for Tag 0
                         for (const auto& node : nodes0)
                         {
-                            if (node.id < 10)  // Ensure node ID is within the valid range
+                            if (node.id < 10)
                             {
                                 distances0[node.id] = node.dis;
                             }
                         }
 
-                        // Populate distances1 for Tag 1
                         for (const auto& node : nodes1)
                         {
-                            if (node.id < 10)  // Ensure node ID is within the valid range
+                            if (node.id < 10)
                             {
                                 distances1[node.id] = node.dis;
                             }
                         }
 
-                        // Concatenate distances0 and distances1 from msg into a single array
                         std::vector<float> distances;
-                        distances.reserve(seqlen);  // Reserve space for elements
-                        distances.insert(distances.end(), distances0.begin(), distances0.end());  // Insert Tag 0 distances
-                        distances.insert(distances.end(), distances1.begin(), distances1.end());  // Insert Tag 1 distances
+                        distances.reserve(seqlen);
+                        distances.insert(distances.end(), distances0.begin(), distances0.end());
+                        distances.insert(distances.end(), distances1.begin(), distances1.end());
 
-                        // Add this 20-element array to the concatenated_400 array
                         concatenated.insert(concatenated.end(), distances.begin(), distances.end());
 
-
-                        // Check if we have reached seqlen elements
                         if (concatenated.size() >= (seqlen * 20))
                         {
                             ROS_INFO("Collected seqlen distances. Publishing message.");
 
-                            // Create the message of type uwbreloc::X
                             uwbreloc::X msg;
+                            msg.header.stamp = first_timestamp;
+                            std::copy(concatenated.begin(), concatenated.end(), msg.distances.begin());
 
-                            // Fill in the message data
-                            msg.header.stamp = first_timestamp;  // Set the timestamp
-                            std::copy(concatenated.begin(), concatenated.end(), msg.distances.begin());  // Fill the distances array
-
-                            // Publish the message
                             pub_.publish(msg);
-
-                            // // Optional: Display the distances (for debugging)
-                            // for (size_t j = 0; j < concatenated.size(); ++j)
-                            // {
-                            //     ROS_INFO("Index: %lu, Distance: %f", j, concatenated_400[j]);
-                            // }
-
-                            // Clear the concatenated vector after processing
                             concatenated.clear();
                         }
                     }
-                    ROS_INFO("----------------------------");
                 }
-                else
-                {
-                    sync_buffer_.pop_front();
-                    // ROS_WARN("Time span between the first and the twentieth message exceeds 2 second. Waiting for more data.");
-                }
-                // Remove the oldest processed pair from the buffer
+
                 sync_buffer_.pop_front();
             }
+        }
+    }
+
+    // Timer callback to check if buffer has been empty for 10 seconds
+    void checkEmptyBuffer(const ros::TimerEvent&)
+    {
+        std::lock_guard<std::mutex> lock(buffer_mutex_);
+        ros::Duration time_since_last_data = ros::Time::now() - last_data_time_;
+
+        if ((time_since_last_data.toSec() >= timeout) && (sync_buffer_.size() < seqlen))
+        {
+            ROS_WARN("No data received. Stopping the node.");
+            ros::shutdown();
         }
     }
 };
@@ -218,13 +181,10 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "SyncUWB");
 
-    // Create a NodeHandle pointer to manage the ROS node
     ros::NodeHandlePtr nh_ptr(new ros::NodeHandle);
 
-    // Create an instance of the SyncUWB class
     SyncUWB syncuwb(nh_ptr);
 
-    // Create a MultiThreadedSpinner to handle callbacks
     ros::MultiThreadedSpinner spinner(0);
     spinner.spin();
 

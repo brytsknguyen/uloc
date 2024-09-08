@@ -57,6 +57,7 @@ train_path = "/home/dat/slict_ws/src/uwbreloc/data/MCDUWB_nodelay/train"
 # Queue to store positions for calculating heading
 queue_xy = deque(maxlen=50)
 
+timeout = 20  # Timeout period in seconds
 
 # Function to initialize the model and scalers
 def initialize_model():
@@ -91,16 +92,26 @@ def uwb_callback(msg):
         x_buffer.append(msg)
         buffer_condition.notify()
 
-
 # Function to process the buffer and handle data in batches
 def process_buffer():
-    global model
+    global model, timeout
     rospy.loginfo("Processing buffer...")
+    
+    last_received_time = time.time()  # Store the initial time
 
     while not rospy.is_shutdown():  # Loop until ROS is shutdown
         with buffer_condition:
-            while len(x_buffer) == 0:  # Wait if the buffer is empty
-                buffer_condition.wait()
+            if len(x_buffer) == 0:  # Wait if the buffer is empty
+                buffer_condition.wait(timeout=timeout)
+
+            if len(x_buffer) == 0:  # Check if buffer is still empty after the timeout
+                current_time = time.time()
+                if current_time - last_received_time > timeout:
+                    rospy.logwarn("Buffer has been empty. Shutting down the node.")
+                    rospy.signal_shutdown("No data received.")
+                    break
+            else:
+                last_received_time = time.time()  # Reset the last received time when new data comes in
 
             msg = x_buffer.pop(0)  # Get the first element from the buffer
             distances_1d = msg.distances  # Extract distances from UWB message
