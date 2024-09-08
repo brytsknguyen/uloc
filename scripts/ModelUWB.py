@@ -3,6 +3,8 @@
 import os
 import numpy as np
 import math
+from collections import deque
+
 import rospy
 from nlink_parser.msg import LinktrackNodeframe3  # Message type for UWB data
 from uwbreloc.msg import X
@@ -46,6 +48,8 @@ decay_step = 20
 model_path = '/home/dat/slict_ws/src/uwbreloc/model/model_weights.pth'
 all_path = "/home/dat/slict_ws/src/uwbreloc/data/MCDUWB_nodelay/all"
 train_path = "/home/dat/slict_ws/src/uwbreloc/data/MCDUWB_nodelay/train"
+
+queue_xy = deque(maxlen=50)
 
 
 # Function to initialize the model and scalers
@@ -105,22 +109,33 @@ def process_buffer():
 
             stamp = msg.header.stamp
             
-            X = (Ypred[:, 0] + Ypred[:, 3]) / 2
-            Y = (Ypred[:, 1] + Ypred[:, 4]) / 2      
-            dX = np.diff(X, axis=0)
-            dY = np.diff(Y, axis=0)
-            heading = np.arctan2(dY, dX) 
-            unit_vectors = np.array([np.cos(heading), np.sin(heading)])
-            mean_vector = np.mean(unit_vectors, axis=1)
-            mean_heading = np.arctan2(mean_vector[1], mean_vector[0])
-            theta_radian =  mean_heading
-            theta_degree = math.degrees(theta_radian)
+            pos_x = np.mean(Ypred[:, [0, 3]])
+            pos_y = np.mean(Ypred[:, [1, 4]])
+            pos_z = np.mean(Ypred[:, [2, 5]])
 
-            pos_x = np.mean(Ypred[0, [0, 3]])
-            pos_y = np.mean(Ypred[0:, [1, 4]])
-            pos_z = np.mean(Ypred[0:, [2, 5]])
+            queue_xy.append((pos_x, pos_y))
+            if len(queue_xy) > 0:
+                data_to_compute = list(queue_xy)
+                X = [pair[0] for pair in data_to_compute]
+                Y = [pair[1] for pair in data_to_compute]
+                
+                if len(X) > 1:
+                             
+                    dX = np.diff(X) 
+                    dY = np.diff(Y) 
+                    
+                    heading = np.arctan2(dY, dX) 
 
-            publish_pose(pos_x, pos_y, pos_z, theta_radian, stamp)
+                    unit_vectors = np.array([np.cos(heading), np.sin(heading)])
+                      
+                    mean_vector = np.mean(unit_vectors, axis=1) 
+                    
+                    mean_heading = np.arctan2(mean_vector[1], mean_vector[0])
+                    
+                    theta_radian = mean_heading
+                    theta_degree = math.degrees(theta_radian)
+                   
+                    publish_pose(pos_x, pos_y, pos_z, theta_radian, stamp)
 
 
 def publish_pose(pos_x, pos_y, pos_z, theta_radian, stamp):
