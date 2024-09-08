@@ -118,9 +118,9 @@ def process_buffer():
             stamp = msg.header.stamp  # Get the timestamp from the UWB message
             
             # Calculate average positions from predictions
-            pos_x = np.mean(Ypred[:, [0, 3]])
-            pos_y = np.mean(Ypred[:, [1, 4]])
-            pos_z = np.mean(Ypred[:, [2, 5]])
+            pos_x = np.mean(Ypred[0, [0, 3]])
+            pos_y = np.mean(Ypred[0, [1, 4]])
+            pos_z = np.mean(Ypred[0, [2, 5]])
 
             queue_xy.append((pos_x, pos_y))  # Append current positions to the queue
             if len(queue_xy) > 0:

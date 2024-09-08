@@ -50,6 +50,8 @@ private:
     // ROS Publisher to publish uwbreloc::X message
     ros::Publisher pub_;
 
+    int seqlen = 20;
+
 public:
     // Destructor
     ~SyncUWB()
@@ -129,11 +131,11 @@ public:
                 ros::Duration time_span = last_timestamp - first_timestamp;
 
                 // Process the data only if the time span is less than or equal to 2 seconds
-                if (time_span.toSec() <= 2.0)
+                if (time_span.toSec() <= (seqlen * 0.05 * 2))
                 {
                     // ROS_INFO("Processing 20 synchronized pairs from the buffer with a time span of %f seconds.", time_span.toSec());
 
-                    for (size_t i = 0; i < 20; ++i)
+                    for (size_t i = 0; i < seqlen; ++i)
                     {
                         auto sync_pair = sync_buffer_.front(); // Get the oldest pair
 
