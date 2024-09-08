@@ -109,31 +109,31 @@ public:
     // Process messages in the buffer without removing them
     void ProcessBuffer()
     {   
-        std::vector<float> concatenated_400;  // Create a vector to store 400 distances
-        concatenated_400.reserve(400);  // Reserve space for 400 elements
+        std::vector<float> concatenated;  // Create a vector to store seqlen * 20 distances
+        concatenated.reserve(seqlen * 20);  // Reserve space for seqlen * 20 elements
 
         while (processing_active_)
         {
             std::unique_lock<std::mutex> lock(buffer_mutex_);
-            // Wait until we have at least 20 pairs in the buffer or stop processing
-            data_ready_.wait(lock, [this]{ return sync_buffer_.size() >= 20 || !processing_active_; });
+            // Wait until we have at least seqlen pairs in the buffer or stop processing
+            data_ready_.wait(lock, [this]{ return sync_buffer_.size() >= seqlen || !processing_active_; });
 
             if (!processing_active_) break;
 
-            // Check if we have enough data (at least 20 pairs)
-            if (sync_buffer_.size() >= 20)
+            // Check if we have enough data
+            if (sync_buffer_.size() >= seqlen)
             {
                 // Get the timestamp of the first and the twentieth message in the buffer
                 auto first_timestamp = sync_buffer_.front().first->header.stamp;
-                auto last_timestamp = sync_buffer_[19].first->header.stamp;
+                auto last_timestamp = sync_buffer_[(seqlen - 1)].first->header.stamp;
 
                 // Calculate the time difference between the first and twentieth message
                 ros::Duration time_span = last_timestamp - first_timestamp;
 
-                // Process the data only if the time span is less than or equal to 2 seconds
+                // Process the data only if the time span is less than or equal to seqlen * 0.05 * 2 seconds
                 if (time_span.toSec() <= (seqlen * 0.05 * 2))
                 {
-                    // ROS_INFO("Processing 20 synchronized pairs from the buffer with a time span of %f seconds.", time_span.toSec());
+                    // ROS_INFO("Processing the sequent synchronized pairs from the buffer with a time span of %f seconds.", time_span.toSec());
 
                     for (size_t i = 0; i < seqlen; ++i)
                     {
@@ -165,39 +165,39 @@ public:
                             }
                         }
 
-                        // Concatenate distances0 and distances1 into a single array
-                        std::vector<float> distances_20;
-                        distances_20.reserve(20);  // Reserve space for 20 elements
-                        distances_20.insert(distances_20.end(), distances0.begin(), distances0.end());  // Insert Tag 0 distances
-                        distances_20.insert(distances_20.end(), distances1.begin(), distances1.end());  // Insert Tag 1 distances
+                        // Concatenate distances0 and distances1 from msg into a single array
+                        std::vector<float> distances;
+                        distances.reserve(seqlen);  // Reserve space for elements
+                        distances.insert(distances.end(), distances0.begin(), distances0.end());  // Insert Tag 0 distances
+                        distances.insert(distances.end(), distances1.begin(), distances1.end());  // Insert Tag 1 distances
 
                         // Add this 20-element array to the concatenated_400 array
-                        concatenated_400.insert(concatenated_400.end(), distances_20.begin(), distances_20.end());
+                        concatenated.insert(concatenated.end(), distances.begin(), distances.end());
 
 
-                        // Check if we have reached 400 elements
-                        if (concatenated_400.size() >= 400)
+                        // Check if we have reached seqlen elements
+                        if (concatenated.size() >= (seqlen * 20))
                         {
-                            ROS_INFO("Collected 400 distances. Publishing message.");
+                            ROS_INFO("Collected seqlen distances. Publishing message.");
 
                             // Create the message of type uwbreloc::X
                             uwbreloc::X msg;
 
                             // Fill in the message data
                             msg.header.stamp = first_timestamp;  // Set the timestamp
-                            std::copy(concatenated_400.begin(), concatenated_400.end(), msg.distances.begin());  // Fill the distances array
+                            std::copy(concatenated.begin(), concatenated.end(), msg.distances.begin());  // Fill the distances array
 
                             // Publish the message
                             pub_.publish(msg);
 
-                            // // Optional: Display the 400 distances (for debugging)
-                            // for (size_t j = 0; j < concatenated_400.size(); ++j)
+                            // // Optional: Display the distances (for debugging)
+                            // for (size_t j = 0; j < concatenated.size(); ++j)
                             // {
                             //     ROS_INFO("Index: %lu, Distance: %f", j, concatenated_400[j]);
                             // }
 
-                            // Clear the concatenated_400 vector after processing
-                            concatenated_400.clear();
+                            // Clear the concatenated vector after processing
+                            concatenated.clear();
                         }
                     }
                     ROS_INFO("----------------------------");
