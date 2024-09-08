@@ -28,9 +28,13 @@ import threading  # For managing thread-safe access to the buffer
 pub = rospy.Publisher('uwb_pose', PoseStamped, queue_size=10)
 Xscaler = MinMaxScaler()
 Yscaler = MinMaxScaler()
+
+# Buffer to store incoming UWB data
 x_buffer = []
 buffer_mutex = threading.Lock()
 buffer_condition = threading.Condition(buffer_mutex)
+
+# Placeholder for the machine learning model
 model = None
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -45,10 +49,12 @@ lr = 0.001
 weight_decay = 0.9
 decay_rate = 0.5
 decay_step = 20
+
 model_path = '/home/dat/slict_ws/src/uwbreloc/model/model_weights.pth'
 all_path = "/home/dat/slict_ws/src/uwbreloc/data/MCDUWB_nodelay/all"
 train_path = "/home/dat/slict_ws/src/uwbreloc/data/MCDUWB_nodelay/train"
 
+# Queue to store positions for calculating heading
 queue_xy = deque(maxlen=50)
 
 
@@ -91,50 +97,59 @@ def process_buffer():
     global model
     rospy.loginfo("Processing buffer...")
 
-    while not rospy.is_shutdown():
+    while not rospy.is_shutdown():  # Loop until ROS is shutdown
         with buffer_condition:
-            while len(x_buffer) == 0:
+            while len(x_buffer) == 0:  # Wait if the buffer is empty
                 buffer_condition.wait()
 
-            msg = x_buffer.pop(0)
-            distances_1d = msg.distances
-            distances_2d = np.reshape(distances_1d, (20, 20))
+            msg = x_buffer.pop(0)  # Get the first element from the buffer
+            distances_1d = msg.distances  # Extract distances from UWB message
+            distances_2d = np.reshape(distances_1d, (20, 20))  # Reshape to 2D array
 
+            # Normalize the input data using the scaler
             X = Xscaler.transform(distances_2d)
-            X = torch.from_numpy(np.array(X)).unsqueeze(0)
+            X = torch.from_numpy(np.array(X)).unsqueeze(0)  # Convert to PyTorch tensor
 
+            # Make predictions using the trained model
             Ypred = model(X.float().to(device)).cpu().detach()
             Ypred = torch.cat((Ypred[0, :, :], Ypred[:, -1, :]), dim=0)
-            Ypred = Yscaler.inverse_transform(Ypred.cpu())
+            Ypred = Yscaler.inverse_transform(Ypred.cpu())  # Inverse transform to get original scale
 
-            stamp = msg.header.stamp
+            stamp = msg.header.stamp  # Get the timestamp from the UWB message
             
+            # Calculate average positions from predictions
             pos_x = np.mean(Ypred[:, [0, 3]])
             pos_y = np.mean(Ypred[:, [1, 4]])
             pos_z = np.mean(Ypred[:, [2, 5]])
 
-            queue_xy.append((pos_x, pos_y))
+            queue_xy.append((pos_x, pos_y))  # Append current positions to the queue
             if len(queue_xy) > 0:
-                data_to_compute = list(queue_xy)
-                X = [pair[0] for pair in data_to_compute]
-                Y = [pair[1] for pair in data_to_compute]
+                data_to_compute = list(queue_xy)  # Convert queue to list
+                X = [pair[0] for pair in data_to_compute]  # Extract x-coordinates
+                Y = [pair[1] for pair in data_to_compute]  # Extract y-coordinates
                 
                 if len(X) > 1:
-                             
-                    dX = np.diff(X) 
-                    dY = np.diff(Y) 
+                    # Calculate differences in positions
+                    dX = np.diff(X)
+                    dY = np.diff(Y)
                     
-                    heading = np.arctan2(dY, dX) 
+                    # Calculate heading angle
+                    heading = np.arctan2(dY, dX)
 
+                    # Calculate unit vectors for heading direction
                     unit_vectors = np.array([np.cos(heading), np.sin(heading)])
                       
-                    mean_vector = np.mean(unit_vectors, axis=1) 
+                    # Compute the mean heading vector
+                    mean_vector = np.mean(unit_vectors, axis=1)
                     
+                    # Calculate the final heading angle
                     mean_heading = np.arctan2(mean_vector[1], mean_vector[0])
                     
+                    # Convert the heading angle to degrees and radians
                     theta_radian = mean_heading
                     theta_degree = math.degrees(theta_radian)
                    
+                    # Publish the computed pose
                     publish_pose(pos_x, pos_y, pos_z, theta_radian, stamp)
 
 
