@@ -3,7 +3,7 @@
     <arg name="publish_clock" default="--clock"/>
 
     <!-- File path to your rosbag file -->
-    <arg name="data_path" default="/home/dat/Downloads"/>
+    <arg name="data_path" default="/media/tmn/mySataSSD1/DATASETS/MCDVIRAL/PublishedSequences/"/>
     <arg name="bag_file" default="$(arg data_path)/ntu_night_08/*.bag"/>
 
     <!-- Offset time for bag file -->
@@ -16,7 +16,7 @@
     <arg name="wait_time" value="0" />
 
     <!-- Node to play back the rosbag -->
-    <node required="false" pkg="rosbag" type="play" name="rosbag_player"
+    <node required="true" pkg="rosbag" type="play" name="rosbag_player"
           args="$(arg publish_clock) $(arg bag_file) -r 1.0 -s $(arg start_time)"
           launch-prefix="bash -c 'sleep $(arg wait_time); $0 $@' "/>
 
