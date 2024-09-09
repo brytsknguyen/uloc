@@ -163,7 +163,7 @@ public:
         }
     }
 
-    // Timer callback to check if buffer has been empty for 10 seconds
+    // Timer callback to check if buffer has been empty after timeout
     void checkEmptyBuffer(const ros::TimerEvent&)
     {
         std::lock_guard<std::mutex> lock(buffer_mutex_);
