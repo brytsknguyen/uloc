@@ -38,6 +38,9 @@ private:
     ros::Publisher pub_;
 
     int seqlen = 20;
+    int inputSize = 20;
+    int anchorsNum = 10;
+    int minimum_anchors_seen = 1;
     ros::Timer empty_buffer_timer_;  // Timer to check if buffer is empty
     ros::Time last_data_time_;       // Tracks the last time data was received
     float  timeout = 20.0;
@@ -59,10 +62,11 @@ public:
     SyncUWB(ros::NodeHandlePtr &nh_ptr_) : nh_ptr(nh_ptr_), 
                                            sub0_(*nh_ptr_, "/ltp_tag0/nlnf3", 1), 
                                            sub1_(*nh_ptr_, "/ltp_tag1/nlnf3", 1), 
-                                           sync_(SyncPolicy(10), sub0_, sub1_),
+                                           sync_(SyncPolicy(50), sub0_, sub1_),
                                            processing_active_(true)
     {
         sync_.registerCallback(boost::bind(&SyncUWB::syncCallback, this, _1, _2));
+        sync_.setMaxIntervalDuration(ros::Duration(0.05));
 
         pub_ = nh_ptr->advertise<uwbreloc::X>("X_topic", 10);
 
@@ -84,59 +88,77 @@ public:
         {
             std::lock_guard<std::mutex> lock(buffer_mutex_);
             sync_buffer_.emplace_back(msg0, msg1);
+
+            // double time_diff = (msg0->header.stamp - msg1->header.stamp).toSec();
+            // if (time_diff > 0.025)
+            //     printf("Large time_diff %f\n", time_diff);
+            // else
+            //     printf("Small time_diff %f\n", time_diff);
         }
 
         last_data_time_ = ros::Time::now();  // Update the last data time
-        data_ready_.notify_one();
     }
 
     void ProcessBuffer()
     {   
         std::vector<float> concatenated;
-        concatenated.reserve(seqlen * 20);
+        concatenated.reserve(seqlen * inputSize);
 
         while (processing_active_)
         {
-            std::unique_lock<std::mutex> lock(buffer_mutex_);
-            data_ready_.wait(lock, [this]{ return sync_buffer_.size() >= seqlen || !processing_active_; });
-
-            if (!processing_active_) break;
-
-            if (sync_buffer_.size() >= seqlen)
+            if(sync_buffer_.size() < seqlen)
             {
-                auto first_timestamp = sync_buffer_.front().first->header.stamp;
-                auto last_timestamp = sync_buffer_[(seqlen - 1)].first->header.stamp;
+                std::this_thread::sleep_for(std::chrono::milliseconds(20));
+                continue;
+            }
 
-                ros::Duration time_span = last_timestamp - first_timestamp;
+            // Now there are at least seqlen messages in buffer
+            auto &msg0f = sync_buffer_.front().first;
+            auto &msg1f = sync_buffer_.front().second;
+            auto &msg0b = sync_buffer_.back().first;
+            auto &msg1b = sync_buffer_.back().second;
 
-                if (time_span.toSec() <= (seqlen * 0.05 * 2))
+            // Calculate the time span
+            auto first_timestamp = std::min(msg0f->header.stamp, msg0f->header.stamp);
+            auto last_timestamp = std::max(msg0b->header.stamp, msg1b->header.stamp);
+            ros::Duration time_span = last_timestamp - first_timestamp;
+
+            // Extracto patronum
+            if (time_span.toSec() <= (seqlen * 0.05 * 2))
+            {
+                for (size_t i = 0; i < seqlen; ++i)
                 {
-                    for (size_t i = 0; i < seqlen; ++i)
+                    auto sync_pair = sync_buffer_.front();
+
+                    std::vector<float> distances0(10, 0.0);
+                    std::vector<float> distances1(10, 0.0);
+
+                    std::vector<nlink_parser::LinktrackNode2> nodes0 = sync_pair.first->nodes;
+                    std::vector<nlink_parser::LinktrackNode2> nodes1 = sync_pair.second->nodes;
+
+                    // Count the number of anchors seen
+                    std::map<int, int> anc_checklist;
+
+                    for (const auto& node : nodes0)
                     {
-                        auto sync_pair = sync_buffer_.front();
-
-                        std::vector<float> distances0(10, 0.0);
-                        std::vector<float> distances1(10, 0.0);
-
-                        std::vector<nlink_parser::LinktrackNode2> nodes0 = sync_pair.first->nodes;
-                        std::vector<nlink_parser::LinktrackNode2> nodes1 = sync_pair.second->nodes;
-
-                        for (const auto& node : nodes0)
+                        if (node.id < anchorsNum)
                         {
-                            if (node.id < 10)
-                            {
-                                distances0[node.id] = node.dis;
-                            }
+                            distances0[node.id] = node.dis;
+                            anc_checklist[node.id] = 1;
                         }
+                    }
 
-                        for (const auto& node : nodes1)
+                    for (const auto& node : nodes1)
+                    {
+                        if (node.id < anchorsNum)
                         {
-                            if (node.id < 10)
-                            {
-                                distances1[node.id] = node.dis;
-                            }
+                            distances1[node.id] = node.dis;
+                            anc_checklist[node.id] = 1;
                         }
+                    }
 
+                    if (anc_checklist.size() >= minimum_anchors_seen)
+                    {
                         std::vector<float> distances;
                         distances.reserve(seqlen);
                         distances.insert(distances.end(), distances0.begin(), distances0.end());
@@ -144,12 +166,12 @@ public:
 
                         concatenated.insert(concatenated.end(), distances.begin(), distances.end());
 
-                        if (concatenated.size() >= (seqlen * 20))
+                        if (concatenated.size() >= (seqlen * inputSize))
                         {
                             ROS_INFO("Collected seqlen distances. Publishing message.");
 
                             uwbreloc::X msg;
-                            msg.header.stamp = first_timestamp;
+                            msg.header.stamp = last_timestamp;
                             std::copy(concatenated.begin(), concatenated.end(), msg.distances.begin());
 
                             pub_.publish(msg);
@@ -157,9 +179,11 @@ public:
                         }
                     }
                 }
-
-                sync_buffer_.pop_front();
             }
+
+            buffer_mutex_.lock();
+            sync_buffer_.pop_front();
+            buffer_mutex_.unlock();
         }
     }
 
