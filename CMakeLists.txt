@@ -164,6 +164,7 @@ include_directories(
 catkin_install_python(PROGRAMS
   scripts/run_model.py
   scripts/ModelUWB.py
+  scripts/pose_to_csv.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
