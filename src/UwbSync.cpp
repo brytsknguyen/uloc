@@ -25,6 +25,7 @@
 using namespace std;
 typedef nlink_parser::LinktrackNodeframe3 ltpbUwbMsg;
 typedef nlink_parser::LinktrackNodeframe3::Ptr ltpbUwbMsgPtr;
+typedef nlink_parser::LinktrackNodeframe3::ConstPtr ltpbUwbMsgConstPtr;
 
 // Define a comparator function for sorting nodes by their ID
 bool compareByID(const nlink_parser::LinktrackNode2& node1, const nlink_parser::LinktrackNode2& node2)
@@ -37,24 +38,25 @@ class UwbSync
 private:
     ros::NodeHandlePtr nh_ptr;
 
-    message_filters::Subscriber<nlink_parser::LinktrackNodeframe3> sub0_;
-    message_filters::Subscriber<nlink_parser::LinktrackNodeframe3> sub1_;
+    message_filters::Subscriber<ltpbUwbMsg> sub0_;
+    message_filters::Subscriber<ltpbUwbMsg> sub1_;
 
-    typedef message_filters::sync_policies::ApproximateTime<nlink_parser::LinktrackNodeframe3, nlink_parser::LinktrackNodeframe3> SyncPolicy;
+    typedef message_filters::sync_policies::ApproximateTime<ltpbUwbMsg, ltpbUwbMsg> SyncPolicy;
     message_filters::Synchronizer<SyncPolicy> sync_;
-
-    std::deque<std::pair<nlink_parser::LinktrackNodeframe3::ConstPtr, nlink_parser::LinktrackNodeframe3::ConstPtr>> sync_buffer_;
-    std::mutex buffer_mutex_;
-    std::condition_variable data_ready_;
-    std::thread processing_thread_;
-    bool processing_active_;
 
     ros::Publisher pub_;
 
+    std::mutex buffer_mutex_;
+    std::deque<std::pair<ltpbUwbMsgConstPtr, ltpbUwbMsgConstPtr>> sync_buffer_;
+    
+    std::thread processing_thread_;
+    bool processing_active_;
+
     int seqlen = 20;
     int inputSize = 20;
-    int anchorsNum = 10;
     int minimum_anchors_seen = 1;
+    int anchorsNum = 10;
+
     ros::Timer empty_buffer_timer_;  // Timer to check if buffer is empty
     ros::Time last_data_time_;       // Tracks the last time data was received
     float  timeout = 20.0;
@@ -67,11 +69,8 @@ public:
             processing_active_ = false;
         }
 
-        data_ready_.notify_all();
         if (processing_thread_.joinable())
-        {
             processing_thread_.join();
-        }
     }
 
     UwbSync(ros::NodeHandlePtr &nh_ptr_) : nh_ptr(nh_ptr_), 
@@ -91,7 +90,7 @@ public:
         processing_thread_ = std::thread(&UwbSync::ProcessBuffer, this);
     }
 
-    void syncCallback(const nlink_parser::LinktrackNodeframe3::ConstPtr& msg0_, const nlink_parser::LinktrackNodeframe3::ConstPtr& msg1_)
+    void syncCallback(const ltpbUwbMsgConstPtr& msg0_, const ltpbUwbMsgConstPtr& msg1_)
     {
         if (msg0_->nodes.empty() || msg1_->nodes.empty())
             return;
