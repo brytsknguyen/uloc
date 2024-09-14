@@ -74,8 +74,8 @@ public:
     }
 
     UwbSync(ros::NodeHandlePtr &nh_ptr_) : nh_ptr(nh_ptr_), 
-                                           sub0_(*nh_ptr_, "/ltp_tag0/nlnf3", 1), 
-                                           sub1_(*nh_ptr_, "/ltp_tag1/nlnf3", 1), 
+                                           sub0_(*nh_ptr_, "/ltp_tag0/nlnf3", 50), 
+                                           sub1_(*nh_ptr_, "/ltp_tag1/nlnf3", 50), 
                                            sync_(SyncPolicy(50), sub0_, sub1_),
                                            processing_active_(true)
     {
