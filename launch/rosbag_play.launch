@@ -19,7 +19,7 @@
 
     <!-- Node to play back the rosbag -->
     <node required="false" pkg="rosbag" type="play" name="rosbag_player"
-          args="$(arg publish_clock) $(arg bag_file) -r 10.0 -s $(arg start_time)"
+          args="$(arg publish_clock) $(arg bag_file) -r 5.0 -s $(arg start_time)"
           launch-prefix="bash -c 'sleep $(arg wait_time); $0 $@' "/>
 
     <!-- Launch the ModelUWB node -->
