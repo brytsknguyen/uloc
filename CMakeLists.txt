@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(uwbreloc)
+project(uloc)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -161,11 +161,11 @@ include_directories(
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
-catkin_install_python(PROGRAMS
-  scripts/run_model.py
-  scripts/ModelUWB.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+# catkin_install_python(PROGRAMS
+#   scripts/run_model.py
+#   scripts/uloc.py
+#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+# )
 
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
@@ -207,7 +207,7 @@ catkin_install_python(PROGRAMS
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
-catkin_install_python(PROGRAMS scripts/run_model.py scripts/ModelUWB.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+catkin_install_python(PROGRAMS scripts/run_model.py scripts/uloc_model.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
-add_executable(SyncUWB src/SyncUWB.cpp)
-target_link_libraries(SyncUWB ${catkin_LIBRARIES})
+add_executable(uwb_sync src/UwbSync.cpp)
+target_link_libraries(uwb_sync ${catkin_LIBRARIES})

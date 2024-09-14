@@ -21,12 +21,12 @@
           launch-prefix="bash -c 'sleep $(arg wait_time); $0 $@' "/>
 
     <!-- Launch the ModelUWB node -->
-    <node name="ModelUWB" pkg="uwbreloc" type="ModelUWB.py" output="screen" required="true">
+    <node name="ModelUWB" pkg="uloc" type="ModelUWB.py" output="screen" required="true">
         <param name="use_sim_time" value="false"/>
     </node>
 
-    <!-- Launch the SyncUWB node -->
-    <node name="SyncUWB" pkg="uwbreloc" type="SyncUWB">
+    <!-- Launch the uwb_sync node -->
+    <node name="uwb_sync" pkg="uloc" type="uwb_sync">
         <param name="use_sim_time" value="false"/>
     </node>
 </launch>

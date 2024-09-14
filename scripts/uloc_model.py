@@ -7,7 +7,7 @@ from collections import deque
 
 import rospy
 from nlink_parser.msg import LinktrackNodeframe3  # Message type for UWB data
-from uwbreloc.msg import X
+from uloc.msg import X
 
 from sklearn.preprocessing import MinMaxScaler  # For scaling input data
 import pickle  # For saving/loading models and data
@@ -50,9 +50,9 @@ weight_decay = 0.9
 decay_rate = 0.5
 decay_step = 20
 
-model_path = '/home/tmn/ros_ws/dev_ws/src/uwbreloc/model/model_weights.pth'
-all_path   = "/home/tmn/ros_ws/dev_ws/src/uwbreloc/data/MCDUWB_nodelay/all"
-train_path = "/home/tmn/ros_ws/dev_ws/src/uwbreloc/data/MCDUWB_nodelay/train"
+model_path = '/home/tmn/ros_ws/dev_ws/src/uloc/model/model_weights.pth'
+all_path   = "/home/tmn/ros_ws/dev_ws/src/uloc/data/MCDUWB_nodelay/all"
+train_path = "/home/tmn/ros_ws/dev_ws/src/uloc/data/MCDUWB_nodelay/train"
 
 # Queue to store positions for calculating heading
 queue_xy = deque(maxlen=50)
@@ -84,7 +84,6 @@ def initialize_model():
     model = model.to(device)
 
     rospy.loginfo("Model initialized successfully")
-
 
 # Callback function for processing incoming UWB messages
 def uwb_callback(msg):
@@ -163,7 +162,6 @@ def process_buffer():
                     # Publish the computed pose
                     publish_pose(pos_x, pos_y, pos_z, theta_radian, stamp)
 
-
 def publish_pose(pos_x, pos_y, pos_z, theta_radian, stamp):
     """Function to publish the PoseStamped message."""
     global pub
@@ -183,8 +181,6 @@ def publish_pose(pos_x, pos_y, pos_z, theta_radian, stamp):
     pose_msg.pose.orientation.w = quaternion[3]
     pub.publish(pose_msg)
 
-
-
 # Function to start the ROS node and listener
 def start_uwb_listener():
     rospy.init_node('uwb_subscriber_node', anonymous=True)
@@ -194,7 +190,6 @@ def start_uwb_listener():
     buffer_thread.start()
 
     rospy.spin()
-
 
 # ECA layer definition remains unchanged
 class eca_layer(nn.Module):
