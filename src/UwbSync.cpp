@@ -126,25 +126,25 @@ public:
                     double dt = fabs(msg->header.stamp.toSec() - dbuf[nodeId].stamp);
                     double dd = fabs(node.dis - dbuf[nodeId].dis);
 
-                    if (dt > 1.0)
+                    if(dd/dt < 10.0)
                         dbuf[nodeId] = dstamped(msg->header.stamp.toSec(), node.dis);
                     else
                     {
-                        if(dd/dt < 10.0)
+                        if(dt > 1.0)
                             dbuf[nodeId] = dstamped(msg->header.stamp.toSec(), node.dis);
                         else
                         {
                             printf(KRED "Remove the range %d->%d. dis: %f. dt: %f, dd: %f.\n" RESET,
-                                    tagid, node.id, node.dis, node.id, dt, dd);
+                                   tagid, node.id, node.dis, node.id, dt, dd);
                             node.dis = -1;
                         }
                     }
                 }
             }
         };
-        // Filter large spike
-        checkdis(d0stamped, msg0, 0);
-        checkdis(d1stamped, msg1, 1);
+        // // Filter large spike
+        // checkdis(d0stamped, msg0, 0);
+        // checkdis(d1stamped, msg1, 1);
 
         // Store the message
         {
