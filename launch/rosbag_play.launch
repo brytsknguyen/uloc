@@ -3,8 +3,10 @@
     <arg name="publish_clock" default="--clock"/>
 
     <!-- File path to your rosbag file -->
-    <arg name="data_path" default="/media/tmn/mySataSSD1/DATASETS/MCDVIRAL/PublishedSequences/"/>
-    <arg name="bag_file" default="$(arg data_path)/ntu_night_08/*.bag"/>
+    <!-- File path to your rosbag file -->
+    <arg name="data_path" default="/home/dat/Downloads/ntu_uwb_data"/>
+
+    <arg name="bag_file" default="$(arg data_path)/ntu_night_13_ltpb.bag"/>
 
     <!-- Offset time for bag file -->
     <arg name="start_time" value="0"/>
@@ -16,8 +18,8 @@
     <arg name="wait_time" value="0" />
 
     <!-- Node to play back the rosbag -->
-    <node required="true" pkg="rosbag" type="play" name="rosbag_player"
-          args="$(arg publish_clock) $(arg bag_file) -r 1.0 -s $(arg start_time)"
+    <node required="false" pkg="rosbag" type="play" name="rosbag_player"
+          args="$(arg publish_clock) $(arg bag_file) -r 10.0 -s $(arg start_time)"
           launch-prefix="bash -c 'sleep $(arg wait_time); $0 $@' "/>
 
     <!-- Launch the ModelUWB node -->
@@ -27,6 +29,10 @@
 
     <!-- Launch the uwb_sync node -->
     <node name="uwb_sync" pkg="uloc" type="uwb_sync">
+        <param name="use_sim_time" value="false"/>
+    </node>
+
+    <node name="pose2csv" pkg="uwbreloc" type="pose_to_csv.py">
         <param name="use_sim_time" value="false"/>
     </node>
 </launch>

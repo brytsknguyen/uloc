@@ -152,6 +152,8 @@ public:
             std::lock_guard<std::mutex> lock(buffer_mutex_);
             sync_buffer_.emplace_back(msg0, msg1);
         }
+
+        last_data_time_ = ros::Time::now();
     }
 
     void ProcessBuffer()
@@ -238,6 +240,19 @@ public:
             buffer_mutex_.lock();
             sync_buffer_.pop_front();
             buffer_mutex_.unlock();
+        }
+    }
+
+    // Timer callback to check if buffer has been empty after timeout
+    void checkEmptyBuffer(const ros::TimerEvent&)
+    {
+        std::lock_guard<std::mutex> lock(buffer_mutex_);
+        ros::Duration time_since_last_data = ros::Time::now() - last_data_time_;
+
+        if ((time_since_last_data.toSec() >= timeout) && (sync_buffer_.size() < seqlen))
+        {
+            ROS_WARN("No data received. Stopping the node.");
+            ros::shutdown();
         }
     }
 };
