@@ -7,7 +7,7 @@ from collections import deque
 
 import rospy
 from nlink_parser.msg import LinktrackNodeframe3  # Message type for UWB data
-from uwbreloc.msg import X
+from uloc.msg import X
 
 from sklearn.preprocessing import MinMaxScaler  # For scaling input data
 import pickle  # For saving/loading models and data
@@ -50,12 +50,15 @@ weight_decay = 0.9
 decay_rate = 0.5
 decay_step = 20
 
-model_path = '/home/dat/slict_ws/src/uwbreloc/model/model_weights.pth'
-all_path   = "/home/dat/slict_ws/src/uwbreloc/data/MCDUWB_nodelay/all"
-train_path = "/home/dat/slict_ws/src/uwbreloc/data/MCDUWB_nodelay/train"
+model_path = '/home/tmn/ros_ws/dev_ws/src/uloc/model/model_weights.pth'
+all_path   = "/home/tmn/ros_ws/dev_ws/src/uloc/data/MCDUWB_nodelay/all"
+train_path = "/home/tmn/ros_ws/dev_ws/src/uloc/data/MCDUWB_nodelay/train"
 
 # Queue to store positions for calculating heading
 queue_xy = deque(maxlen=50)
+
+last_ppred = None
+last_tpred = -1
 
 timeout = 20  # Timeout period in seconds
 
@@ -85,7 +88,6 @@ def initialize_model():
 
     rospy.loginfo("Model initialized successfully")
 
-
 # Callback function for processing incoming UWB messages
 def uwb_callback(msg):
     with buffer_condition:
@@ -94,7 +96,9 @@ def uwb_callback(msg):
 
 # Function to process the buffer and handle data in batches
 def process_buffer():
-    global model, timeout
+    
+    global model, timeout, last_ppred, last_tpred
+    
     rospy.loginfo("Processing buffer...")
     
     last_received_time = time.time()  # Store the initial time
@@ -127,19 +131,48 @@ def process_buffer():
             Ypred = Yscaler.inverse_transform(Ypred.cpu())  # Inverse transform to get original scale
 
             stamp = msg.header.stamp  # Get the timestamp from the UWB message
-            
+
             # Calculate average positions from predictions
             pos_x = np.mean(Ypred[0, [0, 3]])
             pos_y = np.mean(Ypred[0, [1, 4]])
             pos_z = np.mean(Ypred[0, [2, 5]])
 
+            curr_pred = np.array([pos_x, pos_y, pos_z]).reshape((3, 1))
+
+            new_pos = False
+            
+            if last_tpred == -1 or (stamp.to_sec() - last_tpred) > 1.0:
+                last_ppred = curr_pred
+                last_tpred = stamp.to_sec()
+                new_pos = True
+            else:
+
+                dp = np.linalg.norm(curr_pred - last_ppred)
+                dt = np.abs(stamp.to_sec() - last_tpred)
+                v = dp/dt
+
+                # Check if the new pos jumps erratically
+                if v < 10:
+                    last_ppred = curr_pred
+                    last_tpred = stamp.to_sec()
+                    new_pos = True
+                # else:
+                #     print("Reject prediction, ", dp, dt, v)
+            
+            # Return if no new pos is admitted
+            if not new_pos:
+                continue
+
             queue_xy.append((pos_x, pos_y))  # Append current positions to the queue
+            
             if len(queue_xy) > 0:
+
                 data_to_compute = list(queue_xy)  # Convert queue to list
                 X = [pair[0] for pair in data_to_compute]  # Extract x-coordinates
                 Y = [pair[1] for pair in data_to_compute]  # Extract y-coordinates
                 
                 if len(X) > 1:
+                    
                     # Calculate differences in positions
                     dX = np.diff(X)
                     dY = np.diff(Y)
@@ -163,7 +196,6 @@ def process_buffer():
                     # Publish the computed pose
                     publish_pose(pos_x, pos_y, pos_z, theta_radian, stamp)
 
-
 def publish_pose(pos_x, pos_y, pos_z, theta_radian, stamp):
     """Function to publish the PoseStamped message."""
     global pub
@@ -176,14 +208,11 @@ def publish_pose(pos_x, pos_y, pos_z, theta_radian, stamp):
     
     quaternion = tf.quaternion_from_euler(0.0, 0.0, theta_radian)
 
-
     pose_msg.pose.orientation.x = quaternion[0]
     pose_msg.pose.orientation.y = quaternion[1]
     pose_msg.pose.orientation.z = quaternion[2]
     pose_msg.pose.orientation.w = quaternion[3]
     pub.publish(pose_msg)
-
-
 
 # Function to start the ROS node and listener
 def start_uwb_listener():
@@ -194,7 +223,6 @@ def start_uwb_listener():
     buffer_thread.start()
 
     rospy.spin()
-
 
 # ECA layer definition remains unchanged
 class eca_layer(nn.Module):
@@ -289,7 +317,6 @@ class MyRNN(nn.Module):
         x = x.view(bs, seq, self.output_dim)
 
         return x
-
 
 # Main function
 if __name__ == '__main__':
