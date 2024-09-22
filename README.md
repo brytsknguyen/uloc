@@ -10,5 +10,5 @@
 **Introduction video**:
 <div align="center">
     <a href="https://youtu.be/vNIGS4iio8o" target="_blank">
-    <img src="uloc_thumbnail.png" width=80% />
+    <img src="uloc_thumbnail.jpg" width=80% />
 </div>
