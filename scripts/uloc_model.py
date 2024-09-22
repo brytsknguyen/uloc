@@ -50,9 +50,9 @@ weight_decay = 0.9
 decay_rate = 0.5
 decay_step = 20
 
-model_path = '/home/tmn/ros_ws/dev_ws/src/uloc/model/model_weights.pth'
-all_path   = "/home/tmn/ros_ws/dev_ws/src/uloc/data/MCDUWB_nodelay/all"
-train_path = "/home/tmn/ros_ws/dev_ws/src/uloc/data/MCDUWB_nodelay/train"
+model_path = '/home/dat/slict_ws/src/uwbreloc/model/model_weights.pth'
+all_path   = "/home/dat/slict_ws/src/uwbreloc/data/MCDUWB_nodelay/all"
+train_path = "/home/dat/slict_ws/src/uwbreloc/data/MCDUWB_nodelay/train"
 
 # Queue to store positions for calculating heading
 queue_xy = deque(maxlen=50)

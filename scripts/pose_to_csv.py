@@ -7,7 +7,7 @@ from geometry_msgs.msg import PoseStamped
 class PoseToCSV:
     def __init__(self):
         # Create/Open the CSV file in write mode
-        self.csv_file = open('/home/dat/slict_ws/src/uwbreloc/output/ntu_night_13.csv', mode='w')
+        self.csv_file = open('/home/dat/slict_ws/src/uwbreloc/evo/output/ntu_day_10.csv', mode='w')
         self.csv_writer = csv.writer(self.csv_file)
         # Write CSV headers
         self.csv_writer.writerow(['Time', 'Position_X', 'Position_Y', 'Position_Z', 'Orientation_X', 'Orientation_Y', 'Orientation_Z', 'Orientation_W'])

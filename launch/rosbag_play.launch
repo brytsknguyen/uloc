@@ -6,7 +6,7 @@
     <!-- File path to your rosbag file -->
     <arg name="data_path" default="/home/dat/Downloads/ntu_uwb_data"/>
 
-    <arg name="bag_file" default="$(arg data_path)/ntu_night_13_ltpb.bag"/>
+    <arg name="bag_file" default="$(arg data_path)/ntu_day_10_ltpb.bag"/>
 
     <!-- Offset time for bag file -->
     <arg name="start_time" value="0"/>
@@ -19,11 +19,11 @@
 
     <!-- Node to play back the rosbag -->
     <node required="false" pkg="rosbag" type="play" name="rosbag_player"
-          args="$(arg publish_clock) $(arg bag_file) -r 10.0 -s $(arg start_time)"
+          args="$(arg publish_clock) $(arg bag_file) -r 5.0 -s $(arg start_time)"
           launch-prefix="bash -c 'sleep $(arg wait_time); $0 $@' "/>
 
     <!-- Launch the ModelUWB node -->
-    <node name="ModelUWB" pkg="uloc" type="ModelUWB.py" output="screen" required="true">
+    <node name="ModelUWB" pkg="uloc" type="uloc_model.py" output="screen" required="true">
         <param name="use_sim_time" value="false"/>
     </node>
 
@@ -32,7 +32,7 @@
         <param name="use_sim_time" value="false"/>
     </node>
 
-    <node name="pose2csv" pkg="uwbreloc" type="pose_to_csv.py">
+    <node name="pose2csv" pkg="uloc" type="pose_to_csv.py">
         <param name="use_sim_time" value="false"/>
     </node>
 </launch>
