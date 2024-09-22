@@ -7,7 +7,8 @@
 
 <br/>
 
-![image](https://github.com/user-attachments/assets/05f4a5de-a2b6-418e-971c-85fea8b5a09c)
-<div style="text-align: center;">
-  Comparison with state of the art
+**Introduction video**:
+<div align="center">
+    <a href="https://youtu.be/vNIGS4iio8o" target="_blank">
+    <img src="docs/uloc_thumbnail.png" width=80% />
 </div>
