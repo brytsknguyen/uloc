@@ -60,7 +60,7 @@ queue_xy = deque(maxlen=50)
 last_ppred = None
 last_tpred = -1
 
-timeout = 20  # Timeout period in seconds
+timeout = 60  # Timeout period in seconds
 
 # Function to initialize the model and scalers
 def initialize_model():
@@ -112,8 +112,8 @@ def process_buffer():
                 current_time = time.time()
                 if current_time - last_received_time > timeout:
                     rospy.logwarn("Buffer has been empty. Shutting down the node.")
-                    rospy.signal_shutdown("No data received.")
-                    break
+                    # rospy.signal_shutdown("No data received.")
+                    # break
             else:
                 last_received_time = time.time()  # Reset the last received time when new data comes in
 
@@ -198,7 +198,9 @@ def process_buffer():
 
 def publish_pose(pos_x, pos_y, pos_z, theta_radian, stamp):
     """Function to publish the PoseStamped message."""
+    
     global pub
+    
     pose_msg = PoseStamped()
     pose_msg.header.stamp = stamp
     pose_msg.header.frame_id = "map"
@@ -212,12 +214,14 @@ def publish_pose(pos_x, pos_y, pos_z, theta_radian, stamp):
     pose_msg.pose.orientation.y = quaternion[1]
     pose_msg.pose.orientation.z = quaternion[2]
     pose_msg.pose.orientation.w = quaternion[3]
+
+    # print("Publish uloc pos", pose_msg.header.stamp.to_sec())
     pub.publish(pose_msg)
 
 # Function to start the ROS node and listener
 def start_uwb_listener():
     rospy.init_node('uwb_subscriber_node', anonymous=True)
-    rospy.Subscriber('X_topic', X, uwb_callback)
+    rospy.Subscriber('X_topic', X, uwb_callback, queue_size=100)
 
     buffer_thread = threading.Thread(target=process_buffer)
     buffer_thread.start()

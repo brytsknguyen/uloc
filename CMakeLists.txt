@@ -127,6 +127,7 @@ include_directories(
 catkin_install_python(PROGRAMS
   scripts/run_model.py
   scripts/uloc_model.py
+  scripts/uloc_reloc.py
   scripts/pose_to_csv.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 

@@ -171,8 +171,8 @@ public:
             // Now there are at least seqlen messages in buffer
             auto &msg0f = sync_buffer_.front().first;
             auto &msg1f = sync_buffer_.front().second;
-            auto &msg0b = sync_buffer_.back().first;
-            auto &msg1b = sync_buffer_.back().second;
+            auto &msg0b = sync_buffer_[seqlen-1].first;
+            auto &msg1b = sync_buffer_[seqlen-1].second;
 
             // Calculate the time span
             auto first_timestamp = std::min(msg0f->header.stamp, msg1f->header.stamp);
