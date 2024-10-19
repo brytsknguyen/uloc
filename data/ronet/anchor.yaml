@@ -1,4 +1,4 @@
-ntu_world:
+mcd_world:
     anchor_0:
         T:
         - [ 1.0, 0.0, 0.0, -55.9598010 ]

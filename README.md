@@ -7,7 +7,7 @@
 
 <br/>
 
-[arxiv](https://arxiv.org/abs/2409.11122)
+[arxiv](https://arxiv.org/pdf/2409.11122)
 
 **Introduction video**:
 <div align="center">
