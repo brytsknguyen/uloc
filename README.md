@@ -7,6 +7,8 @@
 
 <br/>
 
+[arxiv](https://arxiv.org/abs/2409.11122)
+
 **Introduction video**:
 <div align="center">
     <a href="https://youtu.be/vNIGS4iio8o" target="_blank">
