@@ -115,8 +115,8 @@ def plotPathError(Y, Ypred, ax,colorScalePiv, train_on_slam, train_one_anchor, t
     anc_pos = np.array(list(anchor_pos['ntu_world'].values()))
     ax.scatter(anc_pos[:, 0], anc_pos[:, 1], c='r', s=50, label='anchor')
     
-    ax.text(x=200, y=25, s=f'Trial: '+trial)
-    ax.text(x=200, y=00, s=f'RMSE: {res.rmse:.3} m')
+    ax.text(x=200, y=30, s=f'Trial: '+trial)
+    ax.text(x=200, y= 5, s=f'RMSE: {res.rmse:.3} m')
 
     # Configure some visuals
     ax.set_xlabel('x [m]')
