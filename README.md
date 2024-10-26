@@ -9,7 +9,7 @@
 
 **Introduction video**:
 <div align="center">
-    <a href="https://youtu.be/vNIGS4iio8o" target="_blank">
+    <a href="https://youtu.be/Ur8_9yE6mJg" target="_blank">
     <img src="resources/uloc_thumbnail.jpg" width=80% />
 </div>
 
