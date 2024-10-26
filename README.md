@@ -10,7 +10,7 @@
 **Introduction video**:
 <div align="center">
     <a href="https://youtu.be/Ur8_9yE6mJg" target="_blank">
-    <img src="resources/uloc_thumbnail.jpg" width=80% />
+    <img src="resources/uloc_thumbnail_.jpg" width=80% />
 </div>
 
 Papers:
