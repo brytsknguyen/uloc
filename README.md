@@ -24,11 +24,13 @@ Git clone this repo and checkout the uloc.ipynb.
 
 For the source code
 ```
-@article{nguyen2024uloc,
-  title     = {ULOC: Learning to Localize in Complex Large-Scale Environments with Ultra-Wideband Ranges},
-  author    = {Nguyen, Thien-Minh and Yang, Yizhuo and Nguyen, Tien-Dat and Yuan, Shenghai and Xie, Lihua},
-  journal   = {arXiv preprint arXiv:2409.11122},
-  year      = {2024}
+@inproceedings{nguyen2024uloc,
+    title        = {ULOC: Learning to Localize in Complex Large-Scale Environments with Ultra-Wideband Ranges},
+    author       = {Nguyen, Thien-Minh and Yang, Yizhuo and Nguyen, Tien-Dat and Yuan, Shenghai and Xie, Lihua},
+    year         = 2025,
+    booktitle    = {2025 IEEE International Conference on Robotics and Automation (ICRA)},
+    pages        = {1--7},
+    organization = {IEEE}
 }
 ```
 
