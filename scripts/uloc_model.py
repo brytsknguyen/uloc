@@ -3,6 +3,7 @@
 import os
 import numpy as np
 import math
+import glob
 from collections import deque
 
 import rospy
@@ -50,9 +51,12 @@ weight_decay = 0.9
 decay_rate = 0.5
 decay_step = 20
 
-model_path = '/home/dat/slict_ws/src/uwbreloc/model/model_weights.pth'
-all_path   = "/home/dat/slict_ws/src/uwbreloc/data/MCDUWB_nodelay/all"
-train_path = "/home/dat/slict_ws/src/uwbreloc/data/MCDUWB_nodelay/train"
+script_path = os.path.abspath(__file__)  # Absolute path of the script
+script_dir = os.path.dirname(script_path)  # Directory of the script
+
+model_path = script_dir + '/../model/model_weights.pth'
+all_path   = script_dir + '/../data/MCDUWB_nodelay/all'
+train_path = script_dir + '/../data/MCDUWB_nodelay/train'
 
 # Queue to store positions for calculating heading
 queue_xy = deque(maxlen=50)
@@ -65,14 +69,16 @@ timeout = 60  # Timeout period in seconds
 # Function to initialize the model and scalers
 def initialize_model():
     global model
-    rospy.loginfo("Initializing model and scalers...")
+    print("Initializing model and scalers...")
     
     # Load and fit scalers with training data
-    csv_files = os.listdir(train_path)
+    csv_files = glob.glob(train_path + '/**/*.csv', recursive=True)
+    # csv_files = [os.path.abspath(file) for file in csv_files_]
+    assert(len(csv_files) != 0)
     for file in csv_files:
         if file.endswith('.csv'):
-            rospy.loginfo(f"Loading CSV file: {file}")
-            data = np.loadtxt(all_path + '/' + file, delimiter=',')
+            print(f"Loading CSV file: {file}")
+            data = np.loadtxt(file, delimiter=',')
             X_ = data[:, 7::3]
             Y_ = data[:, [1, 2, 3, 4, 5, 6]]
             Xscaler.partial_fit(X_)
@@ -86,7 +92,7 @@ def initialize_model():
     model.eval()
     model = model.to(device)
 
-    rospy.loginfo("Model initialized successfully")
+    print("Model initialized successfully")
 
 # Callback function for processing incoming UWB messages
 def uwb_callback(msg):
@@ -99,7 +105,7 @@ def process_buffer():
     
     global model, timeout, last_ppred, last_tpred
     
-    rospy.loginfo("Processing buffer...")
+    print("Processing buffer...")
     
     last_received_time = time.time()  # Store the initial time
 
